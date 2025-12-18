@@ -1,0 +1,13 @@
+public with sharing class TouchpointController {
+    @AuraEnabled(cacheable=true)
+    public static List<Touchpoint__c> getTouchpointsForContact(Id contactId) {
+        if(contactId == null) return new List<Touchpoint__c>();
+        return [
+            SELECT Id, Stage__c, Sentiment__c, Interaction_Date__c, Description__c, Source__c
+            FROM Touchpoint__c
+            WHERE Related_Contact__c = :contactId
+            ORDER BY Interaction_Date__c DESC NULLS LAST
+            LIMIT 200
+        ];
+    }
+}
