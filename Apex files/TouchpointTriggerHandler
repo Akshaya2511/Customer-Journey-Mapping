@@ -1,0 +1,44 @@
+public with sharing class TouchpointTriggerHandler {
+    public static void createTouchpointsForClosedWon(List<Opportunity> newOpps, Map<Id, Opportunity> oldMap) {
+        Set<Id> oppIdsToProcess = new Set<Id>();
+        for (Opportunity opp : newOpps) {
+            Opportunity oldOpp = oldMap.get(opp.Id);
+            if (opp.StageName == 'Closed Won' && oldOpp.StageName != 'Closed Won') {
+                oppIdsToProcess.add(opp.Id);
+            }
+        }
+        if (oppIdsToProcess.isEmpty()) return;
+
+        Map<Id, Id> oppToContact = new Map<Id, Id>();
+        for (OpportunityContactRole ocr : [
+            SELECT OpportunityId, ContactId, IsPrimary
+            FROM OpportunityContactRole
+            WHERE OpportunityId IN :oppIdsToProcess AND IsPrimary = true
+        ]) {
+            if (!oppToContact.containsKey(ocr.OpportunityId)) {
+                oppToContact.put(ocr.OpportunityId, ocr.ContactId);
+            }
+        }
+
+        List<Touchpoint__c> tps = new List<Touchpoint__c>();
+        for (Opportunity opp : [SELECT Id, Name FROM Opportunity WHERE Id IN :oppIdsToProcess]) {
+            Touchpoint__c tp = new Touchpoint__c();
+            tp.Stage__c = 'Purchase';
+            tp.Interaction_Date__c = System.today();
+            tp.Related_Opportunity__c = opp.Id;
+            tp.Description__c = 'Opportunity Closed Won: ' + opp.Name;
+            if (oppToContact.containsKey(opp.Id)) {
+                tp.Related_Contact__c = oppToContact.get(opp.Id);
+            }
+            tps.add(tp);
+        }
+
+        if (!tps.isEmpty()) {
+            try {
+                insert tps;
+            } catch (DmlException e) {
+                System.debug('Error inserting touchpoints: ' + e.getMessage());
+            }
+        }
+    }
+}
