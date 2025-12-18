@@ -1,0 +1,3 @@
+trigger OpportunityClosedWonTrigger on Opportunity (after update) {
+    TouchpointTriggerHandler.createTouchpointsForClosedWon(Trigger.new, Trigger.oldMap);
+}
